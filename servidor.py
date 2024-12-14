@@ -1,6 +1,7 @@
 #uvicorn servidor:app --host 0.0.0.0 --port 8000 --reload
 import os
 import requests
+import json
 import pandas as pd
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -15,21 +16,31 @@ url = "https://raw.githubusercontent.com/benoitvallon/100-best-books/refs/heads/
 json_filename = "books.json"
 
 def download_json_file():
-    if not os.path.exists(json_filename):  # Verifica si el archivo ya existe
+    if not os.path.exists(json_filename):  
         response = requests.get(url)
         if response.status_code == 200:
+            books = response.json()
+
+            booksWithID = [] 
+            for i, book in enumerate(books):
+                booksWithID.append({ "id": i + 1 , **book })
+
+
             with open(json_filename, "w", encoding="utf-8") as file:
-                file.write(response.text)
-            print("Archivo descargado exitosamente.")
+                json.dump(booksWithID, file, ensure_ascii=False, indent=4)
+            print("Archivo descargado y actualizado con IDs exitosamente.")
         else:
             print(f"Error al descargar el archivo: {response.status_code}")
     else:
         print(f"El archivo {json_filename} ya existe.")
 
+
+
 download_json_file()
 
 # Modelo
 class Book(BaseModel):
+    id: int
     author: str
     country: str
     imageLink: str
@@ -41,14 +52,19 @@ class Book(BaseModel):
 
 def load_books():
     if os.path.exists(json_filename):  
-        # Leer el archivo JSON usando pandas
         df = pd.read_json(json_filename)
-        # Convertir el DataFrame en una lista de diccionarios para la API
         return df.to_dict(orient="records")  
     else:
         print("Archivo inexistente")
         return []
-
+    
+def get_book_by_id(id):
+    books = load_books() 
+    for book in books: 
+        if book["id"] == id: 
+            print(book)
+            return book 
+        
 #Funcion creada para guardar los cambios que se hacen en el df en el archivo .json
 def save_books(books):
     pd.DataFrame(books).to_json(json_filename, orient="records")
@@ -57,21 +73,16 @@ def save_books(books):
 @app.get("/books")
 def get_books(): 
     books = load_books() 
-    return books  
+    return { "data":books, "total_registries": len(books) } 
 
-@app.get("/books")
-async def get_books(country: Optional[str] = None, year: Optional[int] = None):
-    print("ENTRA ACA?")
-    books = load_books()
-    if country:
-        books = [book for book in books if book['country'].lower() == country.lower()]
-    if year:
-        books = [book for book in books if book['year'] == year]
-    
-    if not books:
-        raise HTTPException(status_code=404, detail="No books found with the specified filters.")
-    
-    return books
+#Opcion 1 - Obtener un libro en especifico
+@app.get("/books/{id}")
+def get_by_id(id:int):
+    book = get_book_by_id(id)
+    if (not book):
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    return { "data": book } 
 
 #Opcion 3 - Borrar un libro por su Nombre
 @app.delete("/books/{book_title}")
@@ -104,3 +115,10 @@ def add_book(book: Book):
     save_books(books)
     
     return {"message": "Libro agregado exitosamente", "book": book}
+
+#Opción 5 - Actualizar un libro
+@app.put("/books")
+def update_book(id: int):
+    book = get_book_by_id(id)
+
+
