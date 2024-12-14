@@ -1,103 +1,95 @@
-#uvicorn servidor:app --host 0.0.0.0 --port 8000 --reload
-import os
 import requests
-import pandas as pd
-from fastapi import FastAPI
-from pydantic import BaseModel
-from fastapi import HTTPException
-from typing import Optional
 
+cierre = 'si'
 
-app = FastAPI()
-
-# URL del archivo JSON
-url = "https://raw.githubusercontent.com/benoitvallon/100-best-books/refs/heads/master/books.json"
-json_filename = "books.json"
-
-def download_json_file():
-    if not os.path.exists(json_filename):  # Verifica si el archivo ya existe
-        response = requests.get(url)
-        if response.status_code == 200:
-            with open(json_filename, "w", encoding="utf-8") as file:
-                file.write(response.text)
-            print("Archivo descargado exitosamente.")
-        else:
-            print(f"Error al descargar el archivo: {response.status_code}")
-    else:
-        print(f"El archivo {json_filename} ya existe.")
-
-download_json_file()
-
-# Modelo
-class Book(BaseModel):
-    author: str
-    country: str
-    imageLink: str
-    language: str
-    link: str
-    pages: int
-    title: str
-    year: int
-
-def load_books():
-    if os.path.exists(json_filename):  
-        # Leer el archivo JSON usando pandas
-        df = pd.read_json(json_filename)
-        # Convertir el DataFrame en una lista de diccionarios para la API
-        return df.to_dict(orient="records")  
-    else:
-        print("Archivo inexistente")
-        return []
-
-def save_books(books):
-    pd.DataFrame(books).to_json(json_filename, orient="records")
-
-
-@app.get("/books")
-def get_books(): 
-    books = load_books() 
-    return books  
-
-
-#@app.get("/books/{book_id}", response_model=Book) 
-#def get_book_by_id(book_id: int):
-#    books = load_books() 
- #   print("books: ", books) 
- #   for book in books: 
- #       if book["id"] == book_id: 
- #           print("book: ", book)
-  #          return book 
-  #  raise HTTPException(status_code=404, detail="Book not found")
-
-
-@app.get("/books")
-async def get_books(country: Optional[str] = None, year: Optional[int] = None):
-    print("ENTRA ACA?")
-    books = load_books()
-    if country:
-        books = [book for book in books if book['country'].lower() == country.lower()]
-    if year:
-        books = [book for book in books if book['year'] == year]
+while cierre != 'no':
+    print("------------------------------")
+    cierre = input("Desea realizar una operación? (si/no): ").lower()
     
-    if not books:
-        raise HTTPException(status_code=404, detail="No books found with the specified filters.")
-    
-    return books
 
-@app.delete("/books/{book_title}")
-def delete_book(book_title: str):
-    books = load_books()  
-    book_to_delete = None
+    if cierre not in ['si', 'sí', 'no', 'nó']:
+        print("------------------------------")
+        print("Respuesta no válida. Por favor, responde 'si' o 'no'.")
+        
+        continue
 
-    # Buscar el libro por título
-    for book in books:
-        if book['title'].lower() == book_title.lower():  # comparar título 
-            book_to_delete = book
-            break
-    
-    if book_to_delete:
-        books.remove(book_to_delete)  # eliminar el libro e
-        save_books(books)  # guardar los cambios en el archivo JSON
-        return {"message": f"El libro '{book_title}' ha sido eliminado exitosamente."}
-    
-    raise HTTPException(status_code=404, detail="Book not found")
+    if cierre == 'si' or cierre == 'sí':
+        print("------------------------------")
+        print("Opciones disponibles:")
+        print("1: Ver todos los libros")
+        print("2: Opción 2")
+        print("3: Eliminar un Libro")
+        print("4: Opción 4")
+        print("5: Opción 5")
+        opciones_lista = [1, 2, 3, 4, 5]
+        print("------------------------------")
+        opcion = int(input("Elija una de las opciones: 1, 2, 3, 4, 5: "))
+        
+
+        if opcion not in opciones_lista:
+            print("------------------------------")
+            print(f"Opción no disponible, por favor elija una de las opciones: {opciones_lista}")
+            
+            continue
+
+        base_url = "http://127.0.0.1:8000/"
+
+        if opcion == 1:
+            response = requests.get(f"{base_url}/books")
+            if response.status_code == 200:
+                books = response.json()  
+                print("Libros disponibles:")
+                i= 0
+                for book in books:
+                    i+= 1
+                    print({i},f"- {book['title']} by {book['author']}")
+            else:
+                print(f"Error al realizar la solicitud: {response.status_code}")
+        
+        if opcion == 2:
+            print("En construccion")
+            
+            
+        if opcion == 3:
+            book_title = input("Ingrese el título del libro que desea eliminar: ").strip()
+            response = requests.delete(f"{base_url}/books/{book_title}")
+            if response.status_code == 200:
+                print(response.json()['message'])
+            else:
+                print(f"Error al realizar la solicitud: {response.status_code}")
+
+
+        if opcion == 4:
+            # Solicitar datos para el nuevo libro
+            print("Ingrese los detalles del nuevo libro:")
+            title = input("Título: ").strip()
+            author = input("Autor: ").strip()
+            country = input("País: ").strip()
+            imageLink = input("Enlace de imagen: ").strip()
+            language = input("Idioma: ").strip()
+            link = input("Enlace: ").strip()
+            pages = int(input("Páginas: "))
+            year = int(input("Año: "))
+
+            new_book = {
+                "title": title,
+                "author": author,
+                "country": country,
+                "imageLink": imageLink,
+                "language": language,
+                "link": link,
+                "pages": pages,
+                "year": year
+            }
+
+            response = requests.post(f"{base_url}/books", json=new_book)
+            if response.status_code == 200:
+                print("Libro agregado exitosamente!")
+                print(response.json())
+            else:
+                print(f"Error al agregar el libro: {response.status_code}")    
+            
+    elif cierre == 'no' or cierre == 'nó':
+        print("------------------------------")
+        print("Gracias por usar nuestra API :)")
+        break
