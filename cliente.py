@@ -42,7 +42,8 @@ while cierre != 'no':
                 i= 0
                 for book in books:
                     i+= 1
-                    print({i},f"- {book['title']} by {book['author']}")
+                    print(i,f"- {book['title']} by {book['author']}")
+                    print("Libros totales: ",i)
             else:
                 print(f"Error al realizar la solicitud: {response.status_code}")
         
